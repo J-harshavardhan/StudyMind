@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     passwordHash: { type: String, required: true, select: false },
+    sessionVersion: { type: Number, default: 0, min: 0 },
     settings: { type: settingsSchema, default: () => ({}) },
     streak: { type: streakSchema, default: () => ({}) }
   },

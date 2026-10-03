@@ -77,13 +77,9 @@ export async function getRange(req, res, next) {
 export async function createTask(req, res, next) {
   try {
     const data = parse(createTaskSchema, req.body);
-    if (!data.dateKey) {
-      const error = new Error('dateKey is required');
-      error.status = 400;
-      throw error;
-    }
+    const dateKey = data.dateKey || todayKey(await userTimezone(req.user.sub));
     await validateNote(data.note, req.user.sub);
-    const task = await Task.create({ ...data, user: req.user.sub });
+    const task = await Task.create({ ...data, dateKey, user: req.user.sub });
     return res.status(201).json({ task });
   } catch (error) {
     return next(error);

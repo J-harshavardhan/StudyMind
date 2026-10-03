@@ -14,6 +14,9 @@ A runnable MERN learning companion starter with JWT authentication, profile and 
 
 - `PORT` defaults to `5000` and is validated.
 - `MONGO_URI` is required unless `USE_MEMORY_DB=true`.
+- To enable the optional AI Assistant, add a Google AI Studio Gemini key as `GEMINI_API_KEY` in the server `.env` file. The key is never sent to the browser.
+- The default Gemini model is `gemini-3.5-flash-lite`; change `GEMINI_MODEL` if your Google AI Studio account exposes a different available model.
+- Recurring reminders are stored as one owned series with virtual Asia/Kolkata occurrences. Completion, snoozing, dismissal, and missed state are tracked per occurrence without creating unbounded reminder documents.
 - `JWT_SECRET` must be at least 32 characters and must not use the removed dev fallback.
 - `CLIENT_ORIGIN` must be a valid origin URL such as `http://localhost:5173`.
 - `TRUST_PROXY` defaults to `false`.
@@ -27,6 +30,11 @@ A runnable MERN learning companion starter with JWT authentication, profile and 
 - `PATCH /api/auth/profile`
 - `PATCH /api/auth/change-password`
 - `POST /api/auth/logout`
+
+Authentication is maintained in an `HttpOnly`, `Secure` (in production), `SameSite=Strict`
+cookie. The client sends requests with credentials enabled; JWTs are not stored in browser
+storage. State-changing requests that include an auth cookie must come from `CLIENT_ORIGIN`.
+Logging out and changing a password invalidate previously issued sessions.
 
 ## Validation
 

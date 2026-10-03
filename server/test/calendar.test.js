@@ -12,12 +12,14 @@ const request = (await import('supertest')).default;
 const { default: User } = await import('../src/models/User.js');
 const { default: Note } = await import('../src/models/Note.js');
 const { default: Task } = await import('../src/models/Task.js');
+const { default: Reminder } = await import('../src/models/Reminder.js');
 const { connectDb, closeDb } = await import('../src/utils/db.js');
 const { addDays, todayKey } = await import('../src/utils/dateUtils.js');
 
 test.before(async () => connectDb());
 test.after(async () => {
   await Task.deleteMany({});
+  await Reminder.deleteMany({});
   await Note.deleteMany({});
   await User.deleteMany({});
   await closeDb();
@@ -29,7 +31,7 @@ const userToken = async (email) => {
     email,
     password: 'StrongPass123'
   });
-  return response.body.token;
+  return response.headers['set-cookie'][0].split(';')[0];
 };
 test('calendar requires authentication', async () => {
   const response = await request(app).get('/api/calendar/month?month=2025-02');
@@ -42,8 +44,8 @@ test('calendar rejects invalid months', async () => {
 
 test('month returns day buckets', async () => {
   const token = await userToken('calendar-month@example.com');
-  await request(app).post('/api/tasks').set('Authorization', `Bearer ${token}`).send({ title: 'Task', dateKey: '2026-02-10' });
-  const response = await request(app).get('/api/calendar/month?year=2026&month=2').set('Authorization', `Bearer ${token}`);
+  await request(app).post('/api/tasks').set('Origin', 'http://localhost:5173').set('Cookie', token).send({ title: 'Task', dateKey: '2026-02-10' });
+  const response = await request(app).get('/api/calendar/month?year=2026&month=2').set('Origin', 'http://localhost:5173').set('Cookie', token);
   assert.equal(response.status, 200);
   const bucket = response.body.days.find((day) => day.dateKey === '2026-02-10');
   assert.equal(bucket.taskCount, 1);
@@ -53,9 +55,9 @@ test('month returns day buckets', async () => {
 test('upcoming returns events in date order', async () => {
   const token = await userToken('calendar-upcoming@example.com');
   const start = todayKey('UTC');
-  await request(app).post('/api/tasks').set('Authorization', `Bearer ${token}`).send({ title: 'Later', dateKey: addDays(start, 2) });
-  await request(app).post('/api/tasks').set('Authorization', `Bearer ${token}`).send({ title: 'Sooner', dateKey: addDays(start, 1) });
-  const response = await request(app).get('/api/calendar/upcoming?days=60').set('Authorization', `Bearer ${token}`);
+  await request(app).post('/api/tasks').set('Origin', 'http://localhost:5173').set('Cookie', token).send({ title: 'Later', dateKey: addDays(start, 2) });
+  await request(app).post('/api/tasks').set('Origin', 'http://localhost:5173').set('Cookie', token).send({ title: 'Sooner', dateKey: addDays(start, 1) });
+  const response = await request(app).get('/api/calendar/upcoming?days=60').set('Origin', 'http://localhost:5173').set('Cookie', token);
   assert.equal(response.status, 200);
   assert.deepEqual(response.body.events.map((event) => event.title), ['Sooner', 'Later']);
 });
@@ -65,12 +67,32 @@ test('note deadlines use the user timezone for month buckets', async () => {
   const user = await User.findOne({ email: 'calendar-timezone@example.com' });
   user.settings.timezone = 'Asia/Kolkata';
   await user.save();
-  await request(app).post('/api/notes').set('Authorization', `Bearer ${token}`).send({
+  await request(app).post('/api/notes').set('Origin', 'http://localhost:5173').set('Cookie', token).send({
     title: 'Boundary note',
     content: '',
     deadline: '2026-01-31T23:30:00.000Z'
   });
-  const response = await request(app).get('/api/calendar/month?year=2026&month=2').set('Authorization', `Bearer ${token}`);
+
+  test('month and upcoming include reminders on their Asia/Kolkata date', async () => {
+    const token = await userToken('calendar-reminder@example.com');
+    await request(app).post('/api/reminders').set('Origin', 'http://localhost:5173').set('Cookie', token).send({
+      title: 'October evening study',
+      dateKey: '2026-10-08',
+      time: '20:00',
+      repeat: 'none'
+    });
+    const month = await request(app).get('/api/calendar/month?year=2026&month=10')
+      .set('Origin', 'http://localhost:5173').set('Cookie', token);
+    const bucket = month.body.days.find((day) => day.dateKey === '2026-10-08');
+    assert.equal(bucket.reminderCount, 1);
+    assert.equal(bucket.reminders[0].time, '20:00');
+    assert.equal(bucket.reminders[0].title, 'October evening study');
+
+    const upcoming = await request(app).get('/api/calendar/upcoming?days=60')
+      .set('Origin', 'http://localhost:5173').set('Cookie', token);
+    assert.equal(upcoming.body.events.some((event) => event.type === 'reminder' && event.dateKey === '2026-10-08'), true);
+  });
+  const response = await request(app).get('/api/calendar/month?year=2026&month=2').set('Origin', 'http://localhost:5173').set('Cookie', token);
   const bucket = response.body.days.find((day) => day.dateKey === '2026-02-01');
   assert.equal(bucket.noteDeadlines.length, 1);
 });

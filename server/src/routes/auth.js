@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 import User from '../models/User.js';
-import { auth, signToken } from '../middleware/auth.js';
+import { auth, clearAuthCookie, setAuthCookie, signToken } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -70,7 +70,8 @@ router.post('/register', async (req, res, next) => {
     });
 
     const token = signToken(user);
-    return res.status(201).json({ token, user: serializeUser(user) });
+    setAuthCookie(res, token);
+    return res.status(201).json({ user: serializeUser(user) });
   } catch (error) {
     return next(error);
   }
@@ -86,7 +87,8 @@ router.post('/login', async (req, res, next) => {
     }
 
     const token = signToken(user);
-    return res.json({ token, user: serializeUser(user) });
+    setAuthCookie(res, token);
+    return res.json({ user: serializeUser(user) });
   } catch (error) {
     return next(error);
   }
@@ -147,14 +149,23 @@ router.patch('/change-password', auth, async (req, res, next) => {
     }
 
     user.passwordHash = await bcrypt.hash(newPassword, 12);
+    user.sessionVersion += 1;
     await user.save();
+    const token = signToken(user);
+    setAuthCookie(res, token);
     return res.json({ message: 'Password updated successfully' });
   } catch (error) {
     return next(error);
   }
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', auth, async (req, res, next) => {
+  try {
+    await User.findByIdAndUpdate(req.user.sub, { $inc: { sessionVersion: 1 } });
+    clearAuthCookie(res);
+  } catch (error) {
+    return next(error);
+  }
   res.json({ message: 'Logged out' });
 });
 

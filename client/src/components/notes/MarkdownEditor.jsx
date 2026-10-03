@@ -19,13 +19,17 @@ export default function MarkdownEditor({ value, onChange, onSave }) {
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selected = value.slice(start, end) || 'text';
+    const selected = value.slice(start, end);
     const nextValue = `${value.slice(0, start)}${before}${selected}${after}${value.slice(end)}`;
     onChange(nextValue);
     requestAnimationFrame(() => {
       textarea.focus();
-      const cursor = start + before.length + selected.length + after.length;
-      textarea.setSelectionRange(cursor, cursor);
+      const selectionStart = start + before.length;
+      const selectionEnd = selectionStart + selected.length;
+      textarea.setSelectionRange(
+        selected ? selectionEnd + after.length : selectionStart,
+        selected ? selectionEnd + after.length : selectionStart
+      );
     });
   };
 
@@ -41,20 +45,20 @@ export default function MarkdownEditor({ value, onChange, onSave }) {
   }, [onSave]);
 
   return (
-    <div className="markdown-editor">
+    <div className="markdown-editor" aria-label="Note editor">
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <div className="btn-group" role="tablist">
-          <button type="button" className={`btn btn-sm ${!preview ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setPreview(false)}>Write</button>
-          <button type="button" className={`btn btn-sm ${preview ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setPreview(true)}>Preview</button>
+        <div className="editor-tabs" role="tablist" aria-label="Editor mode">
+          <button type="button" role="tab" aria-selected={!preview} className={`editor-tab ${!preview ? 'is-active' : ''}`} onClick={() => setPreview(false)}>Write</button>
+          <button type="button" role="tab" aria-selected={preview} className={`editor-tab ${preview ? 'is-active' : ''}`} onClick={() => setPreview(true)}>Preview</button>
         </div>
         <small className="text-body-secondary">{wordCount} words</small>
       </div>
       {!preview && (
         <div className="btn-toolbar gap-1 mb-2" aria-label="Markdown toolbar">
-          {toolbar.map(([label, before, after]) => <button type="button" className="btn btn-sm btn-outline-secondary" key={label} onClick={() => insertMarkdown(before.replace('\\n', '\n'), after.replace('\\n', '\n'))}>{label}</button>)}
+          {toolbar.map(([label, before, after]) => <button type="button" className="editor-tool" key={label} onClick={() => insertMarkdown(before.replace('\\n', '\n'), after.replace('\\n', '\n'))}>{label}</button>)}
         </div>
       )}
-      {preview ? <div className="border rounded p-3 markdown-preview"><MarkdownViewer content={value} /></div> : <textarea ref={textareaRef} className="form-control font-monospace" rows="16" value={value} onChange={(event) => onChange(event.target.value)} />}
+      {preview ? <div className="markdown-preview"><MarkdownViewer content={value} /></div> : <textarea ref={textareaRef} aria-label="Note content" className="form-control font-monospace markdown-input" rows="16" value={value} onChange={(event) => onChange(event.target.value)} />}
     </div>
   );
 }

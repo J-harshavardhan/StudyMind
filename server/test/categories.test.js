@@ -20,7 +20,7 @@ const register = async (email) => {
     .post('/api/auth/register')
     .send({ name: 'Category User', email, password: 'StrongPass123' });
   assert.equal(response.status, 201);
-  return response.body.token;
+  return response.headers['set-cookie'][0].split(';')[0];
 };
 
 const categoryPayload = (overrides = {}) => ({
@@ -32,7 +32,7 @@ const categoryPayload = (overrides = {}) => ({
 
 const createCategory = (token, overrides = {}) => request(app)
   .post('/api/categories')
-  .set('Authorization', `Bearer ${token}`)
+  .set('Origin', 'http://localhost:5173').set('Cookie', token)
   .send(categoryPayload(overrides));
 
 test.before(async () => {
@@ -79,7 +79,7 @@ test('lists only the authenticated user categories', async () => {
 
   const response = await request(app)
     .get('/api/categories')
-    .set('Authorization', `Bearer ${firstToken}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', firstToken);
 
   assert.equal(response.status, 200);
   assert.deepEqual(response.body.categories.map((category) => category.name), ['First User Category']);
@@ -91,12 +91,12 @@ test('another user cannot read, update, or delete a category', async () => {
   const created = await createCategory(ownerToken);
   const id = created.body.category._id;
 
-  const read = await request(app).get(`/api/categories/${id}`).set('Authorization', `Bearer ${otherToken}`);
+  const read = await request(app).get(`/api/categories/${id}`).set('Origin', 'http://localhost:5173').set('Cookie', otherToken);
   const update = await request(app)
     .patch(`/api/categories/${id}`)
-    .set('Authorization', `Bearer ${otherToken}`)
+    .set('Origin', 'http://localhost:5173').set('Cookie', otherToken)
     .send({ name: 'Stolen' });
-  const remove = await request(app).delete(`/api/categories/${id}`).set('Authorization', `Bearer ${otherToken}`);
+  const remove = await request(app).delete(`/api/categories/${id}`).set('Origin', 'http://localhost:5173').set('Cookie', otherToken);
 
   assert.equal(read.status, 404);
   assert.equal(update.status, 404);
@@ -108,7 +108,7 @@ test('updates a category', async () => {
   const created = await createCategory(token);
   const response = await request(app)
     .patch(`/api/categories/${created.body.category._id}`)
-    .set('Authorization', `Bearer ${token}`)
+    .set('Origin', 'http://localhost:5173').set('Cookie', token)
     .send({ name: 'Updated', color: '#FF6633', icon: 'target' });
 
   assert.equal(response.status, 200);
@@ -121,12 +121,12 @@ test('deletes a category', async () => {
   const created = await createCategory(token);
   const response = await request(app)
     .delete(`/api/categories/${created.body.category._id}`)
-    .set('Authorization', `Bearer ${token}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', token);
 
   assert.equal(response.status, 204);
   const getResponse = await request(app)
     .get(`/api/categories/${created.body.category._id}`)
-    .set('Authorization', `Bearer ${token}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', token);
   assert.equal(getResponse.status, 404);
 });
 
@@ -138,16 +138,16 @@ test('deleting a category nulls notes for that user only', async () => {
 
   const ownerNote = await request(app)
     .post('/api/notes')
-    .set('Authorization', `Bearer ${ownerToken}`)
+    .set('Origin', 'http://localhost:5173').set('Cookie', ownerToken)
     .send({ title: 'Owner note', content: 'Owner content', category: ownerCategory.body.category._id });
   const otherNote = await request(app)
     .post('/api/notes')
-    .set('Authorization', `Bearer ${otherToken}`)
+    .set('Origin', 'http://localhost:5173').set('Cookie', otherToken)
     .send({ title: 'Other note', content: 'Other content', category: otherCategory.body.category._id });
 
   const response = await request(app)
     .delete(`/api/categories/${ownerCategory.body.category._id}`)
-    .set('Authorization', `Bearer ${ownerToken}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', ownerToken);
 
   assert.equal(response.status, 204);
   const ownerRecord = await Note.findById(ownerNote.body.note._id);
@@ -172,7 +172,7 @@ test('rejects an invalid ObjectId with 400', async () => {
   const token = await register('category-id@example.com');
   const response = await request(app)
     .get('/api/categories/not-an-object-id')
-    .set('Authorization', `Bearer ${token}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', token);
 
   assert.equal(response.status, 400);
 });

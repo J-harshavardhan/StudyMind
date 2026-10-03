@@ -7,7 +7,9 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import Loader from '../components/ui/Loader';
+import Select from '../components/ui/Select';
 import useDebounce from '../hooks/useDebounce';
+import { userError } from '../utils/userErrors';
 
 export default function Notes() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,7 +34,7 @@ export default function Notes() {
       setNotes(data.notes);
       setMeta(data);
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Could not load notes.');
+      setError(userError(requestError, 'Unable to load your notes. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,7 @@ export default function Notes() {
       setDeleting(null);
       await loadNotes();
     } catch (requestError) {
-      toast.error(requestError.response?.data?.message || 'Could not delete note.');
+      toast.error(userError(requestError, 'Unable to delete the note. Please try again.'));
     }
   };
 
@@ -71,18 +73,18 @@ export default function Notes() {
       const { data } = await toggleNotePin(note._id);
       setNotes((current) => current.map((item) => (item._id === note._id ? data.note : item)));
     } catch (requestError) {
-      toast.error(requestError.response?.data?.message || 'Could not update pin.');
+      toast.error(userError(requestError, 'Unable to update the note. Please try again.'));
     }
   };
 
   return (
     <>
-      <div className="d-flex justify-content-between align-items-center mb-4"><div><h1 className="h2 mb-1">Notes</h1><p className="text-body-secondary mb-0">Capture and revisit your ideas.</p></div><Link className="btn btn-primary" to="/notes/new">New note</Link></div>
-      <div className="row g-2 mb-4">
+      <div className="feature-header page-enter"><div><p className="eyebrow">Knowledge base</p><h1>Notes</h1><p className="lede">Capture ideas clearly, then find them when they matter.</p></div><div className="feature-visual notes-visual" aria-hidden="true"><span>✦</span><i /><i /><i /></div><Link className="primary-button" to="/notes/new">New note <span>→</span></Link></div>
+      <div className="surface-card notes-filters row g-2 mb-4 page-enter delay-1">
         <div className="col-lg-5"><input className="form-control" placeholder="Search notes..." value={query} onChange={(event) => setQuery(event.target.value)} /></div>
-        <div className="col-sm-4 col-lg-2"><select className="form-select" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">All categories</option>{categories.map((item) => <option value={item._id} key={item._id}>{item.name}</option>)}</select></div>
+        <div className="col-sm-4 col-lg-2"><Select label="Category" value={category} onChange={setCategory} options={[{ value: '', label: 'All categories' }, ...categories.map((item) => ({ value: item._id, label: item.name }))]} /></div>
         <div className="col-sm-4 col-lg-2"><input className="form-control" placeholder="Tag" value={tag} onChange={(event) => setTag(event.target.value)} /></div>
-        <div className="col-sm-4 col-lg-3"><select className="form-select" value={pinned} onChange={(event) => setPinned(event.target.value)}><option value="">All notes</option><option value="true">Pinned</option><option value="false">Unpinned</option></select></div>
+        <div className="col-sm-4 col-lg-3"><Select label="Status" value={pinned} onChange={setPinned} options={[{ value: '', label: 'All notes' }, { value: 'true', label: 'Pinned' }, { value: 'false', label: 'Unpinned' }]} /></div>
       </div>
       {loading && <Loader />}
       {!loading && error && <ErrorState message={error} onRetry={loadNotes} />}

@@ -18,10 +18,10 @@ describe('Markdown components', () => {
     expect(container.querySelector('script')).not.toBeInTheDocument();
   });
 
-  it('inserts bold markers from the toolbar', () => {
+  it('inserts empty bold markers without placeholder text', () => {
     const onChange = vi.fn();
     render(<MarkdownEditor value="hello" onChange={onChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'bold' }));
-    expect(onChange).toHaveBeenCalledWith('**text**hello');
+    expect(onChange).toHaveBeenCalledWith('****hello');
   });
 });

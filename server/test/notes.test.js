@@ -18,7 +18,7 @@ const register = async (email) => {
   const response = await request(app).post('/api/auth/register')
     .send({ name: 'Notes User', email, password: 'StrongPass123' });
   assert.equal(response.status, 201);
-  return response.body.token;
+  return response.headers['set-cookie'][0].split(';')[0];
 };
 
 const note = (overrides = {}) => ({
@@ -28,7 +28,7 @@ const note = (overrides = {}) => ({
 });
 
 const createNote = (token, overrides = {}) => request(app).post('/api/notes')
-  .set('Authorization', `Bearer ${token}`).send(note(overrides));
+  .set('Origin', 'http://localhost:5173').set('Cookie', token).send(note(overrides));
 
 test.before(async () => connectDb());
 test.after(async () => {
@@ -54,7 +54,7 @@ test('requires authentication and validates note ids', async () => {
   assert.equal((await request(app).get('/api/notes')).status, 401);
   const token = await register('notes-id@example.com');
   assert.equal((await request(app).get('/api/notes/not-an-id')
-    .set('Authorization', `Bearer ${token}`)).status, 400);
+    .set('Origin', 'http://localhost:5173').set('Cookie', token)).status, 400);
 });
 
 test('scopes notes to their owner', async () => {
@@ -62,18 +62,18 @@ test('scopes notes to their owner', async () => {
   const other = await register('notes-other@example.com');
   const created = await createNote(owner);
   const response = await request(app).get(`/api/notes/${created.body.note._id}`)
-    .set('Authorization', `Bearer ${other}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', other);
   assert.equal(response.status, 404);
 });
 
 test('supports category ownership, filtering, search, pagination and sorting', async () => {
   const token = await register('notes-filter@example.com');
-  const category = await request(app).post('/api/categories').set('Authorization', `Bearer ${token}`)
+  const category = await request(app).post('/api/categories').set('Origin', 'http://localhost:5173').set('Cookie', token)
     .send({ name: 'Study', color: '#3366FF', icon: 'book' });
   await createNote(token, { title: 'Zeta', category: category.body.category._id });
   await createNote(token, { title: 'Alpha', content: 'searchable words' });
   const response = await request(app).get('/api/notes?q=searchable&page=1&limit=1')
-    .set('Authorization', `Bearer ${token}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', token);
   assert.equal(response.status, 200);
   assert.equal(response.body.notes.length, 1);
   assert.equal(response.body.notes[0].title, 'Alpha');
@@ -85,20 +85,20 @@ test('updates content and records lastViewedAt on get', async () => {
   const token = await register('notes-update@example.com');
   const created = await createNote(token);
   const updated = await request(app).patch(`/api/notes/${created.body.note._id}`)
-    .set('Authorization', `Bearer ${token}`).send({ content: 'updated content' });
+    .set('Origin', 'http://localhost:5173').set('Cookie', token).send({ content: 'updated content' });
   assert.equal(updated.body.note.wordCount, 2);
   const fetched = await request(app).get(`/api/notes/${created.body.note._id}`)
-    .set('Authorization', `Bearer ${token}`);
+    .set('Origin', 'http://localhost:5173').set('Cookie', token);
   assert.ok(fetched.body.note.lastViewedAt);
 });
 
 test('rejects another user category and deletes notes', async () => {
   const owner = await register('notes-category-owner@example.com');
   const other = await register('notes-category-other@example.com');
-  const category = await request(app).post('/api/categories').set('Authorization', `Bearer ${owner}`)
+  const category = await request(app).post('/api/categories').set('Origin', 'http://localhost:5173').set('Cookie', owner)
     .send({ name: 'Private', color: '#3366FF', icon: 'book' });
   assert.equal((await createNote(other, { category: category.body.category._id })).status, 400);
   const created = await createNote(owner);
   assert.equal((await request(app).delete(`/api/notes/${created.body.note._id}`)
-    .set('Authorization', `Bearer ${owner}`)).status, 204);
+    .set('Origin', 'http://localhost:5173').set('Cookie', owner)).status, 204);
 });

@@ -2,3 +2,5 @@ node_modules
 client/dist
 .env
 *.log
+before-manual-settings-polish.diff
+client/src/styles.backup-before-final-clean.css

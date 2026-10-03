@@ -6,6 +6,7 @@ import MarkdownViewer from '../components/notes/MarkdownViewer';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ErrorState from '../components/ui/ErrorState';
 import Loader from '../components/ui/Loader';
+import { userError } from '../utils/userErrors';
 
 export default function NoteDetail() {
   const { id } = useParams();
@@ -16,7 +17,7 @@ export default function NoteDetail() {
 
   const loadNote = () => {
     setError('');
-    getNote(id).then(({ data }) => setNote(data.note)).catch((requestError) => setError(requestError.response?.data?.message || 'Could not load note.'));
+    getNote(id).then(({ data }) => setNote(data.note)).catch((requestError) => setError(userError(requestError, 'Unable to load the note. Please try again.')));
   };
 
   useEffect(loadNote, [id]);
@@ -26,7 +27,7 @@ export default function NoteDetail() {
       const { data } = await toggleNotePin(id);
       setNote(data.note);
     } catch (requestError) {
-      toast.error(requestError.response?.data?.message || 'Could not update pin.');
+      toast.error(userError(requestError, 'Unable to update the note. Please try again.'));
     }
   };
 
@@ -36,7 +37,7 @@ export default function NoteDetail() {
       toast.success('Note deleted.');
       navigate('/notes');
     } catch (requestError) {
-      toast.error(requestError.response?.data?.message || 'Could not delete note.');
+      toast.error(userError(requestError, 'Unable to delete the note. Please try again.'));
     }
   };
 

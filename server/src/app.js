@@ -10,6 +10,9 @@ import categoryRoutes from './routes/categories.js';
 import noteRoutes from './routes/notes.js';
 import taskRoutes from './routes/tasks.js';
 import calendarRoutes from './routes/calendar.js';
+import assistantRoutes from './routes/assistant.js';
+import reminderRoutes from './routes/reminders.js';
+import { csrfProtection } from './middleware/auth.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 
 const app = express();
@@ -46,12 +49,15 @@ const authLimiter = rateLimit({
 });
 
 app.use('/api', generalLimiter);
+app.use('/api', csrfProtection);
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/assistant', assistantRoutes);
+app.use('/api/reminders', reminderRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
