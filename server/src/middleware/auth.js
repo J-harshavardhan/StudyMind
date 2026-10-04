@@ -37,7 +37,7 @@ export function setAuthCookie(res, token) {
   res.cookie('studymind_token', token, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/'
   });
@@ -47,7 +47,7 @@ export function clearAuthCookie(res) {
   res.clearCookie('studymind_token', {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
     path: '/'
   });
 }
