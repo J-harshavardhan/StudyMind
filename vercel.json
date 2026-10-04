@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://studymind-api-fs6n.onrender.com/api/:path*"
+    },
+    {
       "source": "/:path*",
       "destination": "/index.html"
     }
