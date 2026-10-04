@@ -34,7 +34,13 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const login = ({ user: nextUser }) => {
+  const login = (payload) => {
+    const nextUser = payload?.user || payload;
+
+    if (!nextUser) {
+      return;
+    }
+
     localStorage.setItem('studymind_user', JSON.stringify(nextUser));
     setUser(nextUser);
   };
@@ -58,13 +64,19 @@ export function AuthProvider({ children }) {
     setUser(nextUser);
   };
 
-  return <AuthContext.Provider value={{ user, login, logout, updateUser }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider');
   }
+
   return context;
 }
